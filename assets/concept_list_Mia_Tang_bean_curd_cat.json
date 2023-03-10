@@ -1,0 +1,14 @@
+[
+    {
+        "instance_prompt":     "photo of a <new1> cat",
+        "class_prompt":         "cat",
+        "instance_data_dir":    "./data/bean_curd_cat",
+        "class_data_dir":       "./real_reg/samples_cat"
+    },
+    {
+        "instance_prompt":     "painting of <new2> art",
+        "class_prompt":         "Mia Tang",
+        "instance_data_dir":    "./data/Louis_Wain_cat",
+        "class_data_dir":       "./real_reg/samples_Louis_Wain"
+    }
+]
