@@ -257,6 +257,7 @@ def create_custom_diffusion(unet, freeze_model):
             else:
                 params.requires_grad = False
         else:
+            # freeze q
             if 'attn2.to_k' in name or 'attn2.to_v' in name:
                 params.requires_grad = True
                 print(name)
@@ -281,7 +282,9 @@ def create_custom_diffusion(unet, freeze_model):
 
         if crossattn:
             modifier = torch.ones_like(key)
-            # print(key.shape)
+            # print("key:", key.shape)
+            # stop the gradient on the first token of the text transformer output since it's always the same
+            # observed small benefits when doing that
             modifier[:, :1, :] = modifier[:, :1, :]*0.
             key = modifier*key + (1-modifier)*key.detach()
             value = modifier*value + (1-modifier)*value.detach()
@@ -389,7 +392,7 @@ def import_model_class_from_model_name_or_path(pretrained_model_name_or_path: st
         revision=args.revision,
     )
     model_class = text_encoder_config.architectures[0]
-
+    print("model class:", model_class)
     if model_class == "CLIPTextModel":
         from transformers import CLIPTextModel
 
@@ -715,7 +718,9 @@ class CustomDiffusionDataset(Dataset):
             instance_image =  np.zeros((self.size, self.size,3), dtype=np.float32)
             instance_image[cx - random_scale // 2: cx + random_scale // 2, cy - random_scale // 2: cy + random_scale // 2, :] = instance_image1
 
+            # fit to latent size
             mask = np.zeros((self.size // 8, self.size // 8))
+            # masked background
             mask[(cx - random_scale // 2) // 8 + 1: (cx + random_scale // 2) // 8 - 1, (cy - random_scale // 2) // 8 + 1: (cy + random_scale // 2) // 8 - 1] = 1.
         elif random_scale > self.size:
             add_to_caption = np.random.choice(["zoomed in ", "close up "])
@@ -727,12 +732,14 @@ class CustomDiffusionDataset(Dataset):
             instance_image = np.array(instance_image).astype(np.uint8)
             instance_image = (instance_image / 127.5 - 1.0).astype(np.float32)
             instance_image = instance_image[cx - self.size // 2: cx + self.size // 2, cy - self.size // 2: cy + self.size // 2, :]
+            # fit to latent size
             mask = np.ones((self.size // 8, self.size // 8))
         else:
             if self.size is not None:
                 instance_image = instance_image.resize((self.size, self.size), resample=self.interpolation)
             instance_image = np.array(instance_image).astype(np.uint8)
             instance_image = (instance_image / 127.5 - 1.0).astype(np.float32)
+            # fit to latent size
             mask = np.ones((self.size // 8, self.size // 8))
         ########################################################################
 
@@ -956,7 +963,7 @@ def main(args):
         optimizer_class = torch.optim.AdamW
 
     unet = create_custom_diffusion(unet, args.freeze_model)
-    
+
     # Adding a modifier token which is optimized ####
     # Code taken from https://github.com/huggingface/diffusers/blob/main/examples/textual_inversion/textual_inversion.py
     modifier_token_id = []
@@ -977,7 +984,7 @@ def main(args):
 
             # Convert the initializer_token, placeholder_token to ids
             token_ids = tokenizer.encode([initializer_token], add_special_tokens=False)
-            print(token_ids)
+            print("token_ids:", token_ids)
             # Check if initializer_token is a single token or a sequence of tokens
             if len(token_ids) > 1:
                 raise ValueError("The initializer token must be a single token.")
@@ -1011,11 +1018,11 @@ def main(args):
     else:
         if args.freeze_model == 'crossattn':
             params_to_optimize = (
-                itertools.chain([x[1] for x in unet.named_parameters() if 'attn2' in x[0]], text_encoder.parameters() if args.train_text_encoder else [] ) 
+                itertools.chain([x[1] for x in unet.named_parameters() if 'attn2' in x[0]], text_encoder.parameters() if args.train_text_encoder else [] )
             )
         else:
             params_to_optimize = (
-                itertools.chain([x[1] for x in unet.named_parameters() if ('attn2.to_k' in x[0] or 'attn2.to_v' in x[0])], text_encoder.parameters() if args.train_text_encoder else [] ) 
+                itertools.chain([x[1] for x in unet.named_parameters() if ('attn2.to_k' in x[0] or 'attn2.to_v' in x[0])], text_encoder.parameters() if args.train_text_encoder else [] )
             )
 
     optimizer = optimizer_class(
@@ -1118,7 +1125,7 @@ def main(args):
     # We need to initialize the trackers we use, and also store our configuration.
     # The trackers initializes automatically on the main process.
     if accelerator.is_main_process:
-        accelerator.init_trackers("dreambooth")
+        accelerator.init_trackers("custom diffusion")
 
     # Train!
     total_batch_size = args.train_batch_size * accelerator.num_processes * args.gradient_accumulation_steps
@@ -1143,13 +1150,16 @@ def main(args):
         for step, batch in enumerate(train_dataloader):
             with accelerator.accumulate(unet):
                 # Convert images to latent space
+                # print("pixel_values:", batch["pixel_values"].size())
                 latents = vae.encode(batch["pixel_values"].to(dtype=weight_dtype)).latent_dist.sample()
                 latents = latents * 0.18215
+                # print("latents:", latents.size())
 
                 # Sample noise that we'll add to the latents
                 noise = torch.randn_like(latents)
                 bsz = latents.shape[0]
                 # Sample a random timestep for each image
+                # print("noise_scheduler.config.num_train_timesteps:", noise_scheduler.config.num_train_timesteps)
                 timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
                 timesteps = timesteps.long()
 
@@ -1209,7 +1219,7 @@ def main(args):
                     params_to_clip = (
                         itertools.chain([x[1] for x in unet.named_parameters() if ('attn2.to_k' in x[0] or 'attn2.to_v' in x[0])], text_encoder.parameters())
                         if (args.train_text_encoder or args.modifier_token is not None)
-                        else itertools.chain([x[1] for x in unet.named_parameters() if ('attn2.to_k' in x[0] or 'attn2.to_v' in x[0])]) 
+                        else itertools.chain([x[1] for x in unet.named_parameters() if ('attn2.to_k' in x[0] or 'attn2.to_v' in x[0])])
                     )
                     accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm)
                 optimizer.step()
