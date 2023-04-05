@@ -52,9 +52,10 @@ export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 #          --ckpt $MODEL_NAME \
 #          --prompt "Painting of <new1> cat wearing sunglasses by <new2> art"
 
-#CUDA_VISIBLE_DEVICES=1 python src/sample_diffuser.py \
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
 #          --delta_ckpt logs/bean_curd_cat/delta.bin \
 #          --ckpt $MODEL_NAME \
+#          --batch_size 3 \
 #          --prompt "Painting of <new1> cat at a beach by artist claude monet"
 
 #CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
@@ -82,15 +83,27 @@ export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 #          --ckpt $MODEL_NAME \
 #          --prompt "painting of a cat in the style of <new1> art"
 
-CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
-          --delta_ckpt optimized_logs/optimized_Louis_Wain_art+cat/delta.bin \
-          --ckpt $MODEL_NAME \
-          --prompt "<new1> art style painting of <new2> cat"
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_logs/optimized_Louis_Wain_art+cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --prompt "<new1> art style painting of <new2> cat"
+#
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_logs/optimized_Louis_Wain_art+cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --prompt "<new1> art style painting of <new2> cat sitting on toilet"
 
-CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
-          --delta_ckpt optimized_logs/optimized_Louis_Wain_art+cat/delta.bin \
-          --ckpt $MODEL_NAME \
-          --prompt "<new1> art style painting of <new2> cat sitting on toilet"
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_negative_captions_logs/optimized_Louis_Wain_art+cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --batch_size 2 \
+#          --prompt "<new1> art style painting of <new2> cat"
+#
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_negative_captions_logs/optimized_Louis_Wain_art+cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --batch_size 2 \
+#          --prompt "<new1> art style painting of <new2> cat sitting on toilet"
 
 #CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
 #          --delta_ckpt optimized_logs/optimized_Louis_Wain_art+bean_curd_cat/delta.bin \
@@ -101,3 +114,33 @@ CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
 #          --delta_ckpt optimized_logs/optimized_Louis_Wain_art+bean_curd_cat/delta.bin \
 #          --ckpt $MODEL_NAME \
 #          --prompt "<new1> art style painting of <new2> cat sitting on toilet"
+
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_negative_captions_logs/optimized_Louis_Wain_art+cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --batch_size 3 \
+#          --prompt "<new1> art style painting of <new2> cat"
+#
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_negative_captions_logs/optimized_Louis_Wain_art+cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --batch_size 3 \
+#          --prompt "<new1> art style painting of <new2> cat sitting on toilet"
+
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_negative_captions_logs/optimized_Louis_Wain_art+bean_curd_cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --batch_size 3 \
+#          --prompt "<new1> art style painting of <new2> cat"
+#
+#CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+#          --delta_ckpt optimized_negative_captions_logs/optimized_Louis_Wain_art+bean_curd_cat/delta.bin \
+#          --ckpt $MODEL_NAME \
+#          --batch_size 3 \
+#          --prompt "<new1> art style painting of <new2> cat sitting on toilet"
+
+CUDA_VISIBLE_DEVICES=0 python src/sample_diffuser.py \
+          --delta_ckpt logs/mini_pig/delta.bin \
+          --ckpt $MODEL_NAME \
+          --batch_size 3 \
+          --prompt "photo of <new1> pig"

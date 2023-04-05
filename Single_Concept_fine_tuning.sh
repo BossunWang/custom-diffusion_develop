@@ -6,29 +6,6 @@ export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 
 #CUDA_VISIBLE_DEVICES=0 accelerate launch src/diffuser_training.py \
 #          --pretrained_model_name_or_path=$MODEL_NAME  \
-#          --instance_data_dir=/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/Style_Transfer/diffusers/examples/dreambooth/train_instance_cat  \
-#          --class_data_dir=./real_reg/samples_Louis_Wain_cat/ \
-#          --output_dir=./logs/Louis_Wain_cat  \
-#          --with_prior_preservation \
-#          --real_prior --prior_loss_weight=1.0 \
-#          --instance_prompt="photo of a <new1> cat"  \
-#          --class_prompt="Louis Wain cat" \
-#          --resolution=256  \
-#          --train_batch_size=2  \
-#          --learning_rate=1e-5  \
-#          --lr_warmup_steps=0 \
-#          --max_train_steps=500 \
-#          --num_class_images=180 \
-#          --scale_lr \
-#          --hflip  \
-#          --modifier_token "<new1>" \
-#          --mixed_precision="fp16" \
-#          --revision fp16 \
-#          --use_8bit_adam \
-#          --gradient_accumulation_steps=1
-
-#CUDA_VISIBLE_DEVICES=0 accelerate launch src/diffuser_training.py \
-#          --pretrained_model_name_or_path=$MODEL_NAME  \
 #          --instance_data_dir=./data/cat  \
 #          --class_data_dir=./real_reg/samples_cat/ \
 #          --output_dir=./logs/cat  \
@@ -49,16 +26,17 @@ export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 #          --revision fp16 \
 #          --use_8bit_adam \
 #          --gradient_accumulation_steps=1
-#
+
+
 #CUDA_VISIBLE_DEVICES=0 accelerate launch src/diffuser_training.py \
 #          --pretrained_model_name_or_path=$MODEL_NAME  \
-#          --instance_data_dir=./data/Louis_Wain_cat  \
-#          --class_data_dir=./real_reg/samples_oil_painting/ \
-#          --output_dir=./logs/Louis_Wain  \
+#          --instance_data_dir=./data/bean_curd_cat  \
+#          --class_data_dir=./real_reg/samples_cat/ \
+#          --output_dir=./logs/bean_curd_cat  \
 #          --with_prior_preservation \
 #          --real_prior --prior_loss_weight=1.0 \
-#          --instance_prompt="painting of <new1> art"  \
-#          --class_prompt="oil painting" \
+#          --instance_prompt="photo of a <new1> cat"  \
+#          --class_prompt="cat" \
 #          --resolution=256  \
 #          --train_batch_size=2  \
 #          --learning_rate=1e-5  \
@@ -76,13 +54,13 @@ export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 
 CUDA_VISIBLE_DEVICES=0 accelerate launch src/diffuser_training.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
-          --instance_data_dir=./data/bean_curd_cat  \
-          --class_data_dir=./real_reg/samples_cat/ \
-          --output_dir=./logs/bean_curd_cat  \
+          --instance_data_dir=./data/mini_pig  \
+          --class_data_dir=./real_reg/samples_pig/ \
+          --output_dir=./logs/mini_pig  \
           --with_prior_preservation \
           --real_prior --prior_loss_weight=1.0 \
-          --instance_prompt="photo of a <new1> cat"  \
-          --class_prompt="cat" \
+          --instance_prompt="photo of a <new1> pig"  \
+          --class_prompt="pig" \
           --resolution=256  \
           --train_batch_size=2  \
           --learning_rate=1e-5  \
