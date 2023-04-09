@@ -49,8 +49,8 @@ def gdupdateWexact(K, V, Ktarget1, Kneg, Vtarget1, W, device='cuda'):
     e1 = (Vtarget1.T - W @ Ktarget1.T)
     delta = e1 @ torch.linalg.inv(e2)
 
-    print("e1:", e1.shape)
-    print("e2:", e2.shape)
+    # print("e1:", e1.shape)
+    # print("e2:", e2.shape)
 
     Wnew1 = W + delta @ d
 
@@ -63,15 +63,15 @@ def gdupdateWexact(K, V, Ktarget1, Kneg, Vtarget1, W, device='cuda'):
         e.append(torch.from_numpy(sol).to(K.device))
 
     e = torch.cat(e, 1).T
-    print("e", e.shape)
+    # print("e", e.shape)
     # vT = (V - W0 @ CT)inv(e @ CT)
     e4 = e @ Ktarget1.T
     e3 = (Vtarget1.T - W @ Ktarget1.T)
-    print("e3:", e3.shape)
-    print("e4:", e4.shape)
+    # print("e3:", e3.shape)
+    # print("e4:", e4.shape)
 
     e4_rank = torch.linalg.matrix_rank(e4)
-    print("e4_rank:", e4_rank)
+    # print("e4_rank:", e4_rank)
     assert (e4.shape[0] > e4.shape[1])
     assert (e4_rank == e4.shape[1])
     # left inverse
@@ -97,8 +97,8 @@ def gdupdateWexact(K, V, Ktarget1, Kneg, Vtarget1, W, device='cuda'):
     if loss1[:lambda_split1].mean().item() > loss2[:lambda_split1].mean().item():
         print("select Wnew2")
 
-    return Wnew1 if loss1[:lambda_split1].mean().item() < loss2[:lambda_split1].mean().item() else Wnew2
-
+    # return Wnew1 if loss1[:lambda_split1].mean().item() < loss2[:lambda_split1].mean().item() else Wnew2
+    return Wnew2
 
 def compose(paths, category, outpath, pretrained_model_path, regularization_prompt, negative_prompt, prompts, save_path, device='cuda'):
     model_id = pretrained_model_path
@@ -170,6 +170,7 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
     f_neg = open(negative_prompt, 'r')
     neg_prompt = [x.strip() for x in f_neg.readlines()]
     # prompt = [x.strip() for x in f.readlines()]
+    print("neg_prompt:", len(neg_prompt))
     uc_neg = get_text_embedding(neg_prompt)
     print("uc_neg:", uc_neg.shape)
 
@@ -186,13 +187,17 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
             prompt = [string1] + [f"painting in the style of {string1}"]
         else:
             prompt = [string1] + [f"photo of a {string1}"]
+        print("prompt:", prompt)
         uc_targets.append(get_text_embedding(prompt))
         # for each unet layers
         for each in layers_modified:
             # unet_w is o*d, uc_targets is s*d, uc_values s*o
             # print(model2_sts[composing_model_count][each].shape)
             # print(uc_targets[-1].shape)
-            uc_values[each].append((model2_sts[composing_model_count][each].to(device)@uc_targets[-1].T.half()).T)
+            if model2_sts[composing_model_count][each].dtype != uc_targets[-1].dtype:
+                uc_values[each].append((model2_sts[composing_model_count][each].to(device)@uc_targets[-1].T.half()).T)
+            else:
+                uc_values[each].append((model2_sts[composing_model_count][each].to(device) @ uc_targets[-1].T).T)
 
     uc_targets = torch.cat(uc_targets, 0) # list to torch tensor
 

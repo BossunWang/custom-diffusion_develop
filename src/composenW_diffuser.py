@@ -139,13 +139,17 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
             prompt = [string1] + [f"painting in the style of {string1}"]
         else:
             prompt = [string1] + [f"photo of a {string1}"]
+        print("prompt:", prompt)
         uc_targets.append(get_text_embedding(prompt))
         # for each unet layers
         for each in layers_modified:
             # unet_w is o*d, uc_targets is s*d, uc_values s*o
             # print(model2_sts[composing_model_count][each].shape)
             # print(uc_targets[-1].shape)
-            uc_values[each].append((model2_sts[composing_model_count][each].to(device)@uc_targets[-1].T.half()).T)
+            if model2_sts[composing_model_count][each].dtype != uc_targets[-1].dtype:
+                uc_values[each].append((model2_sts[composing_model_count][each].to(device)@uc_targets[-1].T.half()).T)
+            else:
+                uc_values[each].append((model2_sts[composing_model_count][each].to(device) @ uc_targets[-1].T).T)
 
     uc_targets = torch.cat(uc_targets, 0) # list to torch tensor
 
