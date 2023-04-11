@@ -7,12 +7,13 @@ import os
 import argparse
 import torch
 from scipy.linalg import lu_factor, lu_solve
+
+sys.path.append('./')
 from diffusers import StableDiffusionPipeline
+from src import diffusers_sample
 
 
-# ToDo: negative prompt
-
-def gdupdateWexact(K, V, Ktarget1, Kneg, Vtarget1, W, device='cuda'):
+def gdupdateWexact(K, V, Ktarget1, Vtarget1, W, device='cuda'):
     r"""
        A Lagrange Multipliers method.
 
@@ -20,7 +21,6 @@ def gdupdateWexact(K, V, Ktarget1, Kneg, Vtarget1, W, device='cuda'):
            K (`torch.Tensor`): The matrix of text embeddings from captions of regularization.
            V (`torch.Tensor`): The matrix of initial unet's weights multiply K.
            Ktarget1 (`torch.Tensor`): The matrix of text embeddings from target prompts.
-           Kneg (`torch.Tensor`): The matrix of text embeddings from negative prompts.
            Vtarget1 (`torch.Tensor`): The matrix of fine-tuned unet's weights multiply Ktarget1.
            W (`torch.Tensor`): The matrix of initial unet's weights.
        Output:
@@ -42,62 +42,24 @@ def gdupdateWexact(K, V, Ktarget1, Kneg, Vtarget1, W, device='cuda'):
 
     d = torch.cat(d, 1).T
     # vT = (V - W0 @ CT)inv(d @ CT)
-    e2 = d @ Ktarget1.T
-    e1 = (Vtarget1.T - W @ Ktarget1.T)
-    delta = e1 @ torch.linalg.inv(e2)
+    e2 = d@Ktarget1.T
+    e1 = (Vtarget1.T - W@Ktarget1.T)
+    delta = e1@torch.linalg.inv(e2)
 
-    # print("e1:", e1.shape)
-    # print("e2:", e2.shape)
-
-    Wnew1 = W + delta @ d
-
-    e = []
-    # PLU decomposition
-    lu_neg, piv_neg = lu_factor(C.cpu().numpy())
-    for i in range(Kneg.size(0)):
-        # Solve an equation system, a x = b, given the LU factorization of a
-        sol = lu_solve((lu_neg, piv_neg), Kneg[i].reshape(-1, 1).cpu().numpy())
-        e.append(torch.from_numpy(sol).to(K.device))
-
-    e = torch.cat(e, 1).T
-    # print("e", e.shape)
-    # vT = (V - W0 @ CT)inv(e @ CT)
-    e4 = e @ Ktarget1.T
-    e3 = (Vtarget1.T - W @ Ktarget1.T)
-    # print("e3:", e3.shape)
-    # print("e4:", e4.shape)
-
-    e4_rank = torch.linalg.matrix_rank(e4)
-    # print("e4_rank:", e4_rank)
-    assert (e4.shape[0] > e4.shape[1])
-    assert (e4_rank == e4.shape[1])
-    # left inverse
-    e4_inv = torch.linalg.inv(e4.T @ e4) @ e4.T
-    mu = e3 @ e4_inv
-
-    Wnew2 = W + mu @ e
-
+    Wnew = W + delta@d
     lambda_split1 = Vtarget1.size(0)
 
     input_ = torch.cat([Ktarget1.T, K.T], dim=1)
     output = torch.cat([Vtarget1, V], dim=0)
 
-    loss1 = torch.norm((Wnew1 @ input_).T - output, 2, dim=1)
-    loss2 = torch.norm((Wnew2 @ input_).T - output, 2, dim=1)
+    loss = torch.norm((Wnew@input_).T - output, 2, dim=1)
+    print("loss with target prompt", loss[:lambda_split1].mean().item())
+    print("loss with regularization prompt", loss[lambda_split1:].mean().item())
 
-    print("loss1 with target prompt", loss1[:lambda_split1].mean().item())
-    print("loss1 with regularization prompt", loss1[lambda_split1:].mean().item())
+    return Wnew
 
-    print("loss2 with target prompt", loss2[:lambda_split1].mean().item())
-    print("loss2 with regularization prompt", loss2[lambda_split1:].mean().item())
 
-    if loss1[:lambda_split1].mean().item() > loss2[:lambda_split1].mean().item():
-        print("select Wnew2")
-
-    # return Wnew1 if loss1[:lambda_split1].mean().item() < loss2[:lambda_split1].mean().item() else Wnew2
-    return Wnew2
-
-def compose(paths, category, outpath, pretrained_model_path, regularization_prompt, negative_prompt, prompts, save_path, device='cuda'):
+def compose(paths, category, outpath, pretrained_model_path, regularization_prompt, prompts, save_path, device='cuda'):
     model_id = pretrained_model_path
     pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16).to("cuda")
 
@@ -155,21 +117,14 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
     token_embeds = pipe.text_encoder.get_input_embeddings().weight.data
     for (x, y) in zip(modifier_token_ids, list(embeds.keys())):
         token_embeds[x] = embeds[y]
-        print(x,y, "added embeddings")
+        print(x, y, "added embeddings")
 
     f = open(regularization_prompt, 'r')
-    prompt = [x.strip() for x in f.readlines()][:200]
+    # prompt = [x.strip() for x in f.readlines()][:200]
+    prompt = [x.strip() for x in f.readlines()][:1000]
     # prompt = [x.strip() for x in f.readlines()]
     uc = get_text_embedding(prompt)
     print("uc:", uc.shape)
-
-    # load negative
-    f_neg = open(negative_prompt, 'r')
-    neg_prompt = [x.strip() for x in f_neg.readlines()]
-    # prompt = [x.strip() for x in f.readlines()]
-    print("neg_prompt:", len(neg_prompt))
-    uc_neg = get_text_embedding(neg_prompt)
-    print("uc_neg:", uc_neg.shape)
 
     uc_targets = []
     from collections import defaultdict
@@ -205,18 +160,6 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
             if (uc_targets[i]-uc_targets[j]).abs().mean() == 0:
                 removal_indices.append(j)
 
-    # remove same negative embeddings
-    removal_neg_indices = []
-    for i in range(uc_neg.size(0)):
-        for j in range(i + 1, uc_neg.size(0)):
-            if (uc_neg[i] - uc_neg[j]).abs().mean() == 0:
-                removal_neg_indices.append(j)
-
-    removal_neg_indices = list(set(removal_neg_indices))
-    print("removal neg indices:", removal_neg_indices)
-    uc_neg = torch.stack([uc_neg[i] for i in range(uc_neg.size(0)) if i not in removal_neg_indices], 0)
-    print("uc_neg:", uc_neg.shape)
-
     removal_indices = list(set(removal_indices))
     print("removal indices:", removal_indices)
     uc_targets = torch.stack([uc_targets[i] for i in range(uc_targets.size(0)) if i not in removal_indices], 0)
@@ -233,15 +176,13 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
         W = pipe.unet.state_dict()[each].float()
         # W0 @ Creg
         values = (W@uc.T).T
-        # print("values:", values.shape)
+        print("values:", values.shape)
         input_target = uc_targets
-        input_neg = uc_neg
         output_target = uc_values[each]
 
         Wnew = gdupdateWexact(uc[:values.shape[0]],
                               values,
                               input_target,
-                              input_neg,
                               output_target,
                               W.clone(),
                               )
@@ -252,6 +193,12 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
     new_weights['modifier_token'] = embeds
     os.makedirs(f'{save_path}/{outpath}', exist_ok=True)
     torch.save(new_weights, f'{save_path}/{outpath}/delta.bin')
+
+    if prompts is not None:
+        if os.path.exists(prompts):
+            diffusers_sample.sample(model_id, f'{save_path}/{outpath}/delta.bin', prompts, prompt=None, compress=False, freeze_model='crossattn_kv', batch_size=1)
+        else:
+            diffusers_sample.sample(model_id, f'{save_path}/{outpath}/delta.bin', from_file=None, prompt=prompts, compress=False, freeze_model='crossattn_kv', batch_size=1)
 
 
 def parse_args():
@@ -268,8 +215,6 @@ def parse_args():
                         type=str)
     parser.add_argument('--regularization_prompt', default='./data/regularization_captions.txt',
                         type=str)
-    parser.add_argument('--negative_prompt', default='./data/regularization_captions.txt',
-                        type=str)
     return parser.parse_args()
 
 
@@ -282,4 +227,4 @@ if __name__ == "__main__":
     else:
         temp = categories
     outpath = '_'.join(['optimized', temp])
-    compose(paths, categories, outpath, args.ckpt, args.regularization_prompt, args.negative_prompt, args.prompts, args.save_path)
+    compose(paths, categories, outpath, args.ckpt, args.regularization_prompt, args.prompts, args.save_path)

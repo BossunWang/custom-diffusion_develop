@@ -5,10 +5,10 @@ export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 # launch training script (2 GPUs recommended, increase --max_train_steps to 500 if 1 GPU)
 
 
-CUDA_VISIBLE_DEVICES=0  accelerate launch src/diffuser_training.py \
+CUDA_VISIBLE_DEVICES=0  accelerate launch src/diffusers_training.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
-          --output_dir=./logs/Louis_Wain_bean_curd_cat  \
-          --concepts_list=./assets/concept_list_Louis_Wain_bean_curd_cat.json \
+          --output_dir=./logs/cat_wooden_pot  \
+          --concepts_list=./assets/concept_list.json \
           --with_prior_preservation --real_prior --prior_loss_weight=1.0 \
           --resolution=256  \
           --train_batch_size=2  \

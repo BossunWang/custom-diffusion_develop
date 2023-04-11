@@ -102,7 +102,7 @@ git clone https://github.com/CompVis/stable-diffusion.git
 cd stable-diffusion
 conda env create -f environment.yaml
 conda activate ldm
-pip install clip-retrieval
+pip install clip-retrieval tqdm
 ```
 
 Our code was developed on the following commit `#21f890f9da3cfbeaba8e2ac3c425ee9e998d5229` of [stable-diffusion](https://github.com/CompVis/stable-diffusion).
@@ -176,7 +176,7 @@ pip install accelerate
 pip install modelcards
 pip install transformers>=4.25.1
 pip install deepspeed
-pip install diffusers <= 0.11.0
+pip install diffusers==0.14.0
 accelerate config
 export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 ```
@@ -186,7 +186,7 @@ export MODEL_NAME="CompVis/stable-diffusion-v1-4"
 ```
 ## launch training script (2 GPUs recommended, increase --max_train_steps to 500 if 1 GPU)
 
-accelerate launch src/diffuser_training.py \
+accelerate launch src/diffusers_training.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
           --instance_data_dir=./data/cat  \
           --class_data_dir=./real_reg/samples_cat/ \
@@ -204,8 +204,10 @@ accelerate launch src/diffuser_training.py \
           --modifier_token "<new1>"
 
 ## sample 
-python src/sample_diffuser.py --delta_ckpt logs/cat/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt "<new1> cat playing with a ball"
+python src/diffusers_sample.py --delta_ckpt logs/cat/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt "<new1> cat playing with a ball"
 ```
+
+You can also use `--enable_xformers_memory_efficient_attention` and enable `fp16` during `accelerate config` for faster training with lower VRAM requirement. 
 
 **Multi-Concept fine-tuning**
 
@@ -213,7 +215,7 @@ Provide a [json](assets/concept_list.json) file with the info about each concept
 ```
 ## launch training script (2 GPUs recommended, increase --max_train_steps to 1000 if 1 GPU)
 
-accelerate launch src/diffuser_training.py \
+accelerate launch src/diffusers_training.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
           --output_dir=./logs/cat_wooden_pot  \
           --concepts_list=./assets/concept_list.json \
@@ -228,17 +230,17 @@ accelerate launch src/diffuser_training.py \
           --modifier_token "<new1>+<new2>" 
 
 ## sample 
-python src/sample_diffuser.py --delta_ckpt logs/cat_wooden_pot/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt "<new1> cat sitting inside a <new2> wooden pot and looking up"
+python src/diffusers_sample.py --delta_ckpt logs/cat_wooden_pot/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt "<new1> cat sitting inside a <new2> wooden pot and looking up"
 ```
 
 **Optimization based weights merging for Multi-Concept**
 
 Given two fine-tuned model weights `delta1.bin` and `delta2.bin` for any two categories, the weights can be merged to create a single model as shown below.  
 ```
-python src/composenW_diffuser.py --paths <delta1.bin>+<delta2.bin> --categories  "wooden pot+cat"  --ckpt "CompVis/stable-diffusion-v1-4"
+python src/diffusers_composenW.py --paths <delta1.bin>+<delta2.bin> --categories  "wooden pot+cat"  --ckpt "CompVis/stable-diffusion-v1-4"
 
 ## sample
-python src/sample_diffuser.py --delta_ckpt optimized_logs/<folder-name>/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt "<new1> cat sitting inside a <new2> wooden pot and looking up"
+python src/diffusers_sample.py --delta_ckpt optimized_logs/<folder-name>/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt "<new1> cat sitting inside a <new2> wooden pot and looking up"
 ```
 
 The diffuser training code is modified from the following [DreamBooth]( https://github.com/huggingface/diffusers/blob/main/examples/dreambooth/train_dreambooth.py), [Textual Inversion](https://github.com/huggingface/diffusers/blob/main/examples/textual_inversion/textual_inversion.py) training scripts. For more details on how to setup accelarate please refer [here](https://github.com/huggingface/diffusers/blob/main/examples/dreambooth).
@@ -292,7 +294,7 @@ bash webui.sh --embeddings-dir <path-to-folder>/webui/embeddings  --ckpt <path-t
 ```
 python src/convert.py --delta_ckpt <path-to-folder>/delta_model.ckpt --ckpt <path-to-model-v1-4.ckpt> --mode compvis-to-diffuser                  
 # sample
-python src/sample_diffuser.py --delta_ckpt <path-to-folder>/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt <text-prompt>
+python src/diffusers_sample.py --delta_ckpt <path-to-folder>/delta.bin --ckpt "CompVis/stable-diffusion-v1-4" --prompt <text-prompt>
 ```
 
 * From CompVis `delta_model.ckpt` [stable-diffusion-webui](https://github.com/AUTOMATIC1111/stable-diffusion-webui) checkpoint. 

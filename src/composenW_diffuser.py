@@ -7,11 +7,10 @@ import os
 import argparse
 import torch
 from scipy.linalg import lu_factor, lu_solve
-
-sys.path.append('./')
 from diffusers import StableDiffusionPipeline
-from src import sample_diffuser
 
+
+# ToDo: negative prompt
 
 def gdupdateWexact(K, V, Ktarget1, Vtarget1, W, device='cuda'):
     r"""
@@ -42,24 +41,28 @@ def gdupdateWexact(K, V, Ktarget1, Vtarget1, W, device='cuda'):
 
     d = torch.cat(d, 1).T
     # vT = (V - W0 @ CT)inv(d @ CT)
-    e2 = d@Ktarget1.T
-    e1 = (Vtarget1.T - W@Ktarget1.T)
-    delta = e1@torch.linalg.inv(e2)
+    e2 = d @ Ktarget1.T
+    e1 = (Vtarget1.T - W @ Ktarget1.T)
+    delta = e1 @ torch.linalg.inv(e2)
 
-    Wnew = W + delta@d
+    # print("e1:", e1.shape)
+    # print("e2:", e2.shape)
+
+    Wnew = W + delta @ d
+
     lambda_split1 = Vtarget1.size(0)
 
     input_ = torch.cat([Ktarget1.T, K.T], dim=1)
     output = torch.cat([Vtarget1, V], dim=0)
 
-    loss = torch.norm((Wnew@input_).T - output, 2, dim=1)
+    loss = torch.norm((Wnew @ input_).T - output, 2, dim=1)
+
     print("loss with target prompt", loss[:lambda_split1].mean().item())
     print("loss with regularization prompt", loss[lambda_split1:].mean().item())
 
     return Wnew
 
-
-def compose(paths, category, outpath, pretrained_model_path, regularization_prompt, prompts, save_path, device='cuda'):
+def compose(paths, category, outpath, pretrained_model_path, regularization_prompt, negative_prompt, prompts, save_path, device='cuda'):
     model_id = pretrained_model_path
     pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16).to("cuda")
 
@@ -120,8 +123,7 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
         print(x,y, "added embeddings")
 
     f = open(regularization_prompt, 'r')
-    # prompt = [x.strip() for x in f.readlines()][:200]
-    prompt = [x.strip() for x in f.readlines()][:1000]
+    prompt = [x.strip() for x in f.readlines()][:200]
     # prompt = [x.strip() for x in f.readlines()]
     uc = get_text_embedding(prompt)
     print("uc:", uc.shape)
@@ -176,7 +178,7 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
         W = pipe.unet.state_dict()[each].float()
         # W0 @ Creg
         values = (W@uc.T).T
-        print("values:", values.shape)
+        # print("values:", values.shape)
         input_target = uc_targets
         output_target = uc_values[each]
 
@@ -194,12 +196,6 @@ def compose(paths, category, outpath, pretrained_model_path, regularization_prom
     os.makedirs(f'{save_path}/{outpath}', exist_ok=True)
     torch.save(new_weights, f'{save_path}/{outpath}/delta.bin')
 
-    if prompts is not None:
-        if os.path.exists(prompts):
-            sample_diffuser.sample(model_id, f'{save_path}/{outpath}/delta.bin', prompts, prompt=None, compress=False, freeze_model='crossattn_kv', batch_size=1)
-        else:
-            sample_diffuser.sample(model_id, f'{save_path}/{outpath}/delta.bin', from_file=None, prompt=prompts, compress=False, freeze_model='crossattn_kv', batch_size=1)
-
 
 def parse_args():
     parser = argparse.ArgumentParser('', add_help=False)
@@ -215,6 +211,8 @@ def parse_args():
                         type=str)
     parser.add_argument('--regularization_prompt', default='./data/regularization_captions.txt',
                         type=str)
+    parser.add_argument('--negative_prompt', default='./data/regularization_captions.txt',
+                        type=str)
     return parser.parse_args()
 
 
@@ -227,4 +225,4 @@ if __name__ == "__main__":
     else:
         temp = categories
     outpath = '_'.join(['optimized', temp])
-    compose(paths, categories, outpath, args.ckpt, args.regularization_prompt, args.prompts, args.save_path)
+    compose(paths, categories, outpath, args.ckpt, args.regularization_prompt, args.negative_prompt, args.prompts, args.save_path)

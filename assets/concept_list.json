@@ -3,7 +3,7 @@
         "instance_prompt":     "photo of a <new1> cat",
         "class_prompt":         "cat",
         "instance_data_dir":    "./data/cat",
-        "class_data_dir":       "./real_reg/samples_cat"
+        "class_data_dir":       "./real_reg/samples_tabby_cat"
     },
     {
         "instance_prompt":     "photo of a <new2> wooden pot",

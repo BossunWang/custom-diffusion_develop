@@ -1,14 +1,14 @@
 # Copyright 2022 Adobe Research. All rights reserved.
 # To view a copy of the license, visit LICENSE.md.
 import os, sys
-sys.path.append('stable-diffusion')
-sys.path.append('./')
 import argparse
 import torch
 from omegaconf import OmegaConf
-from diffusers import StableDiffusionPipeline
 from ldm.util import instantiate_from_config
-from src import diffuser_training
+
+sys.path.append('stable-diffusion')
+sys.path.append('./')
+from src.diffusers_model_pipeline import CustomDiffusionPipeline
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -107,11 +107,10 @@ def convert(ckpt, delta_ckpt, sd_version, config, modelname, mode):
             del st['embed']
         for key in list(st.keys()):
             diffuser_st['unet'][mapping_compvis_to_diffuser[key]] = st[key]
-
         torch.save(diffuser_st, f'{os.path.dirname(delta_ckpt)}/delta.bin')
-        pipe = StableDiffusionPipeline.from_pretrained(sd_version, torch_dtype=torch.float16).to("cuda")
-        diffuser_training.load_model(pipe.text_encoder, pipe.tokenizer, pipe.unet, f'{os.path.dirname(delta_ckpt)}/delta.bin')
-        pipe.save_pretrained(os.path.dirname(delta_ckpt))
+        pipe = CustomDiffusionPipeline.from_pretrained(sd_version, torch_dtype=torch.float16).to("cuda")
+        pipe.load_model(f'{os.path.dirname(delta_ckpt)}/delta.bin')
+        pipe.save_pretrained(os.path.dirname(delta_ckpt), all=True)
     # convert checkpoint from diffuser to CompVis
     elif mode == 'diffuser-to-compvis':
         st = torch.load(delta_ckpt)
@@ -149,7 +148,7 @@ def parse_args():
                         type=str)
     parser.add_argument('--config', default="configs/custom-diffusion/finetune.yaml",
                         type=str)
-    parser.add_argument('--modelname', default="model.ckpt",
+    parser.add_argument('--modelname', default="model.ckpt", help="name of the model to save when converting to webui",
                         type=str)
     parser.add_argument("--mode", default='compvis-to-diffuser', choices=['diffuser-to-webui', 'compvis-to-webui', 'compvis-to-diffuser', 'diffuser-to-compvis'],
                         type=str)
