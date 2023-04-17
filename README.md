@@ -305,6 +305,10 @@ bash webui.sh --embeddings-dir <path-to-folder>/webui/embeddings  --ckpt <path-t
 ```
 Converted checkpoints are saved in the `<path-to-folder>` of the original checkpoints. 
 
+## Attention Map
+```
+bash sample_attetion_map.sh
+```
 
 ## References
 
