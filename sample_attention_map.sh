@@ -62,3 +62,10 @@ CUDA_VISIBLE_DEVICES=0 python src/show_attention_map_diffuser.py \
           --ckpt $MODEL_NAME \
           --batch_size 3 \
           --prompt "a <new1> cat and a <new2> dog playing together"
+
+
+CUDA_VISIBLE_DEVICES=0 python src/show_attention_map_diffuser.py \
+          --delta_ckpt optimized_negative_captions_custom_logs/optimized_cat+dog/delta.bin \
+          --ckpt $MODEL_NAME \
+          --batch_size 3 \
+          --prompt "a <new1> cat and a <new2> dog playing together"
